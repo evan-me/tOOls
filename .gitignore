@@ -1,0 +1,83 @@
+# Node / JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log
+
+# Editor/IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+out/
+release/
+*.local
+*.tmp
+
+# Vite / React
+/.vite
+/.temp
+/.cache
+/public/build/
+
+# Electron
+/*.asar
+/*.asar.unpacked
+*.map
+electron-builder-cache/
+dist-electron/
+app-build/
+electron/dist/
+
+# SQLite / DB / app data
+*.sqlite
+*.sqlite3
+*.db
+app.sqlite
+*.db-shm
+*.db-wal
+*.sql
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+electron-debug.log*
+
+# Environment
+.env
+.env.*.local
+.env.local
+
+# Native build artifacts
+build/**/node_modules/
+**/build/Release/
+**/build/Debug/
+node-gyp-local/
+
+# Misc
+coverage/
+reports/
+*.bak
+*.orig
+
+# Windows reserved names
+nul
+
+# Ignore local platform-specific user data created by the app (userData)
+# NOTE: keep this out of version control during development; if you want to
+# persist a sample DB or fixture, add it intentionally and document it.
+user-data/
+userData/

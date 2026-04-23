@@ -1,0 +1,75 @@
+{
+  "name": "electron-react-sqlite-windows",
+  "version": "0.1.0",
+  "description": "Electron + React + Vite starter with SQLite (Windows target)",
+  "main": "src/main/index.js",
+  "private": true,
+  "scripts": {
+    "dev:renderer": "cd src/renderer && vite",
+    "dev:main": "cross-env DEBUG_RENDERER=true electron .",
+    "dev": "concurrently \"npm run dev:renderer\" \"wait-on http://localhost:5173 && npm run dev:main\"",
+    "build:renderer": "cd src/renderer && vite build",
+    "build": "npm run build:renderer && electron-builder",
+    "postinstall": "electron-builder install-app-deps",
+    "create-icon": "node scripts/create-tray-icon.js"
+  },
+  "dependencies": {
+    "lucide-react": "^1.8.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sql.js": "^1.10.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3",
+    "electron": "^26.0.0",
+    "electron-builder": "^24.6.0",
+    "vite": "^5.0.0",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.example.electronapp",
+    "productName": "tOOls",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "extraResources": [
+      {
+        "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      },
+      {
+        "from": "assets/tray-icon.png",
+        "to": "tray-icon.png"
+      },
+      {
+        "from": "assets/app-icon.png",
+        "to": "app-icon.png"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "true",
+      "createStartMenuShortcut": "true"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>图片预览</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                background: #1a1a1a;
+                color: #ccc;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                overflow: hidden;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                user-select: none;
+            }
+
+            /* ---- 顶部工具栏 ---- */
+            .toolbar {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 8px 16px;
+                background: #252525;
+                border-bottom: 1px solid #333;
+                flex-shrink: 0;
+                -webkit-app-region: drag;
+            }
+
+            .toolbar-center {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                -webkit-app-region: no-drag;
+            }
+
+            .tb-btn {
+                width: 32px;
+                height: 32px;
+                border: none;
+                border-radius: 6px;
+                background: transparent;
+                color: #aaa;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.12s ease;
+                font-size: 16px;
+            }
+
+            .tb-btn:hover {
+                background: #3a3a3a;
+                color: #fff;
+            }
+
+            .tb-btn.active {
+                background: #444;
+                color: #fff;
+            }
+
+            .tb-separator {
+                width: 1px;
+                height: 20px;
+                background: #444;
+                margin: 0 4px;
+            }
+
+            .tb-scale-label {
+                font-size: 12px;
+                color: #888;
+                min-width: 44px;
+                text-align: center;
+                -webkit-app-region: no-drag;
+            }
+
+            /* ---- 图片区域 ---- */
+            .viewport {
+                flex: 1;
+                overflow: hidden;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: grab;
+            }
+
+            .viewport.dragging {
+                cursor: grabbing;
+            }
+
+            .viewport.checkerboard {
+                background-image:
+                    linear-gradient(45deg, #222 25%, transparent 25%),
+                    linear-gradient(-45deg, #222 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, #222 75%),
+                    linear-gradient(-45deg, transparent 75%, #222 75%);
+                background-size: 20px 20px;
+                background-position:
+                    0 0,
+                    0 10px,
+                    10px -10px,
+                    -10px 0px;
+            }
+
+            .img-wrapper {
+                transform-origin: center center;
+                will-change: transform;
+                pointer-events: none;
+            }
+
+            .img-wrapper img {
+                display: block;
+                max-width: none;
+                pointer-events: none;
+            }
+
+            /* ---- 底部状态栏 ---- */
+            .statusbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 6px 16px;
+                background: #252525;
+                border-top: 1px solid #333;
+                font-size: 11px;
+                color: #666;
+                flex-shrink: 0;
+            }
+
+            .statusbar-left,
+            .statusbar-right {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .status-dim {
+                color: #888;
+            }
+
+            /* ---- 加载中 / 空状态 ---- */
+            .loading-overlay {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #1a1a1a;
+                z-index: 10;
+            }
+
+            .loading-spinner {
+                width: 32px;
+                height: 32px;
+                border: 3px solid #333;
+                border-top-color: #888;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .empty-state {
+                color: #555;
+                font-size: 14px;
+            }
+
+            /* ---- 滚轮缩放提示 ---- */
+            .zoom-toast {
+                position: fixed;
+                bottom: 50px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.75);
+                color: #fff;
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 13px;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.2s;
+                z-index: 100;
+            }
+
+            .zoom-toast.show {
+                opacity: 1;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <div class="toolbar-center">
+                <button class="tb-btn" id="btn-zoom-out" title="缩小 (-)">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        <line x1="8" y1="11" x2="14" y2="11" />
+                    </svg>
+                </button>
+                <span class="tb-scale-label" id="scale-label">100%</span>
+                <button class="tb-btn" id="btn-zoom-in" title="放大 (+)">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        <line x1="11" y1="8" x2="11" y2="14" />
+                        <line x1="8" y1="11" x2="14" y2="11" />
+                    </svg>
+                </button>
+                <div class="tb-separator"></div>
+                <button class="tb-btn" id="btn-rotate-left" title="向左旋转">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <polyline points="1 4 1 10 7 10" />
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                    </svg>
+                </button>
+                <button class="tb-btn" id="btn-rotate-right" title="向右旋转">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+                    </svg>
+                </button>
+                <div class="tb-separator"></div>
+                <button class="tb-btn" id="btn-fit" title="适应窗口">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
+                        />
+                    </svg>
+                </button>
+                <button class="tb-btn" id="btn-reset" title="100% (0)">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 图片视口 -->
+        <div class="viewport" id="viewport">
+            <div class="loading-overlay" id="loading">
+                <div class="loading-spinner"></div>
+            </div>
+            <div class="empty-state" id="empty-state" style="display: none">
+                等待图片…
+            </div>
+            <div class="img-wrapper" id="img-wrapper">
+                <img id="main-img" src="" alt="" />
+            </div>
+        </div>
+
+        <!-- 底部状态栏 -->
+        <div class="statusbar">
+            <div class="statusbar-left">
+                <span class="status-dim" id="status-dim"></span>
+            </div>
+            <div class="statusbar-right">
+                <span id="status-file"></span>
+            </div>
+        </div>
+
+        <!-- 缩放提示 -->
+        <div class="zoom-toast" id="zoom-toast"></div>
+
+        <script>
+            // ==================== 状态 ====================
+            let scale = 1;
+            let rotation = 0;
+            let posX = 0;
+            let posY = 0;
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let imgNaturalW = 0;
+            let imgNaturalH = 0;
+            let toastTimer = null;
+
+            // ==================== DOM ====================
+            const $ = (s) => document.querySelector(s);
+            const viewport = $("#viewport");
+            const imgWrapper = $("#img-wrapper");
+            const mainImg = $("#main-img");
+            const loading = $("#loading");
+            const emptyState = $("#empty-state");
+            const scaleLabel = $("#scale-label");
+            const titleEl = $("#title");
+            const statusDim = $("#status-dim");
+            const statusFile = $("#status-file");
+            const zoomToast = $("#zoom-toast");
+
+            // ==================== 工具函数 ====================
+            function updateTransform() {
+                imgWrapper.style.transform = `translate(${posX}px, ${posY}px) rotate(${rotation}deg) scale(${scale})`;
+                scaleLabel.textContent = Math.round(scale * 100) + "%";
+            }
+
+            function showToast(msg) {
+                zoomToast.textContent = msg;
+                zoomToast.classList.add("show");
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(
+                    () => zoomToast.classList.remove("show"),
+                    800,
+                );
+            }
+
+            function fitToWindow() {
+                if (!imgNaturalW || !imgNaturalH) return;
+                const vw = viewport.clientWidth;
+                const vh = viewport.clientHeight;
+                const padding = 40;
+                const scaleX = (vw - padding) / imgNaturalW;
+                const scaleY = (vh - padding) / imgNaturalH;
+                scale = Math.min(scaleX, scaleY, 1);
+                posX = 0;
+                posY = 0;
+                updateTransform();
+            }
+
+            function resetView() {
+                scale = 1;
+                rotation = 0;
+                posX = 0;
+                posY = 0;
+                updateTransform();
+                showToast("已重置");
+            }
+
+            // ==================== 图片加载 ====================
+            function loadImage(src, alt) {
+                loading.style.display = "flex";
+                emptyState.style.display = "none";
+
+                titleEl.textContent = alt || "图片预览";
+                document.title = alt || "图片预览";
+
+                mainImg.onload = () => {
+                    imgNaturalW = mainImg.naturalWidth;
+                    imgNaturalH = mainImg.naturalHeight;
+                    statusDim.textContent =
+                        imgNaturalW + " × " + imgNaturalH + " px";
+                    statusFile.textContent = alt || "";
+                    loading.style.display = "none";
+                    fitToWindow();
+                };
+
+                mainImg.onerror = () => {
+                    loading.style.display = "none";
+                    statusDim.textContent = "加载失败";
+                };
+
+                mainImg.src = src;
+            }
+
+            // ==================== 缩放 ====================
+            function zoomBy(delta, centerX, centerY) {
+                const oldScale = scale;
+                scale = Math.max(0.05, Math.min(20, scale + delta));
+                // 以 center 为锚点缩放
+                if (centerX !== undefined && centerY !== undefined) {
+                    const vw = viewport.clientWidth / 2;
+                    const vh = viewport.clientHeight / 2;
+                    const imgX = centerX - vw;
+                    const imgY = centerY - vh;
+                    const ratio = scale / oldScale;
+                    posX = imgX - ratio * (imgX - posX);
+                    posY = imgY - ratio * (imgY - posY);
+                }
+                updateTransform();
+                showToast(Math.round(scale * 100) + "%");
+            }
+
+            // ==================== 事件：按钮 ====================
+            $("#btn-zoom-in").addEventListener("click", () => zoomBy(0.2));
+            $("#btn-zoom-out").addEventListener("click", () => zoomBy(-0.2));
+            $("#btn-rotate-left").addEventListener("click", () => {
+                rotation -= 90;
+                updateTransform();
+            });
+            $("#btn-rotate-right").addEventListener("click", () => {
+                rotation += 90;
+                updateTransform();
+            });
+            $("#btn-fit").addEventListener("click", fitToWindow);
+            $("#btn-reset").addEventListener("click", resetView);
+
+            // ==================== 事件：拖拽 ====================
+            viewport.addEventListener("mousedown", (e) => {
+                if (e.button !== 0) return;
+                isDragging = true;
+                dragStartX = e.clientX - posX;
+                dragStartY = e.clientY - posY;
+                viewport.classList.add("dragging");
+            });
+
+            window.addEventListener("mousemove", (e) => {
+                if (!isDragging) return;
+                posX = e.clientX - dragStartX;
+                posY = e.clientY - dragStartY;
+                updateTransform();
+            });
+
+            window.addEventListener("mouseup", () => {
+                isDragging = false;
+                viewport.classList.remove("dragging");
+            });
+
+            // ==================== 事件：滚轮缩放 ====================
+            viewport.addEventListener(
+                "wheel",
+                (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                    zoomBy(delta, e.clientX, e.clientY);
+                },
+                { passive: false },
+            );
+
+            // ==================== 事件：键盘 ====================
+            window.addEventListener("keydown", (e) => {
+                switch (e.key) {
+                    case "Escape":
+                        window.close();
+                        break;
+                    case "+":
+                    case "=":
+                        zoomBy(0.2);
+                        break;
+                    case "-":
+                        zoomBy(-0.2);
+                        break;
+                    case "0":
+                        resetView();
+                        break;
+                    case "f":
+                    case "F":
+                        fitToWindow();
+                        break;
+                    case "ArrowLeft":
+                        rotation -= 90;
+                        updateTransform();
+                        break;
+                    case "ArrowRight":
+                        rotation += 90;
+                        updateTransform();
+                        break;
+                }
+            });
+
+            // ==================== 事件：双击适应 ====================
+            viewport.addEventListener("dblclick", (e) => {
+                e.preventDefault();
+                if (Math.abs(scale - 1) < 0.01 && posX === 0 && posY === 0) {
+                    fitToWindow();
+                } else {
+                    resetView();
+                }
+            });
+
+            // ==================== 接收 IPC 数据 ====================
+            if (window.api && window.api.onImageData) {
+                window.api.onImageData((data) => {
+                    loadImage(data.src, data.alt);
+                });
+            }
+
+            // 兜底：如果没有 IPC 数据（比如直接打开 HTML 调试），检查 URL 参数
+            // 不做任何事，等待 IPC
+        </script>
+    </body>
+</html>
