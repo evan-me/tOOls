@@ -1,37 +1,38 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ClipboardList,
   Clock,
-  Image,
   X,
   Shrink,
   ListTodo,
+  FileText,
   ChevronLeft,
   ChevronRight,
   Settings,
   Monitor,
 } from "lucide-react";
 import ClipboardView from "./views/ClipboardView";
+import MarkdownWorkbenchView from "./views/MarkdownWorkbenchView";
 import TimeView from "./views/TimeView";
-import Base64ImageView from "./views/Base64ImageView";
 import CompressView from "./views/CompressView";
-import TodoView from "./views/TodoView";
+import TodoWorkbenchView from "./views/TodoWorkbenchView";
 import SystemInfoView from "./views/SystemInfoView";
+import QuickSheetView from "./views/QuickSheetView";
 
 const menus = [
   { id: "todo", label: "待办列表", icon: ListTodo, color: "#3b82f6" },
   { id: "clipboard", label: "复制历史", icon: ClipboardList, color: "#22c55e" },
+  { id: "markdown", label: "Markdown", icon: FileText, color: "#f472b6" },
   { id: "time", label: "时间转换", icon: Clock, color: "#f59e0b" },
-  { id: "base64", label: "图像转换", icon: Image, color: "#8b5cf6" },
   { id: "compress", label: "图片压缩", icon: Shrink, color: "#f43f5e" },
   { id: "sysinfo", label: "系统信息", icon: Monitor, color: "#06b6d4" },
 ];
 
 const DEFAULT_VISIBILITY = {
   todo: true,
+  markdown: true,
   clipboard: true,
   time: false,
-  base64: false,
   compress: false,
   sysinfo: true,
 };
@@ -79,69 +80,31 @@ function SettingsModal({ visibility, onChange, onClose }) {
           </button>
         </div>
         <div className="modal-body">
-          <p style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>
-            开启的功能会显示在左侧菜单中
-          </p>
+          <p className="settings-hint">开启的功能会显示在左侧菜单中</p>
           {menus.map((menu) => {
             const Icon = menu.icon;
             const enabled = visibility[menu.id] !== false;
             return (
               <div
                 key={menu.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 0",
-                  borderBottom: "1px solid #f0f0f0",
-                }}
+                className={`settings-row ${enabled ? "is-on" : ""}`}
               >
                 <Icon
                   size={18}
-                  style={{
-                    color: enabled ? menu.color : "#ccc",
-                    flexShrink: 0,
-                  }}
+                  className="settings-row-icon"
+                  style={{ color: enabled ? menu.color : undefined }}
                 />
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: 14,
-                    color: enabled ? "#1a1a1a" : "#999",
-                  }}
-                >
-                  {menu.label}
-                </span>
+                <span className="settings-row-label">{menu.label}</span>
                 <button
+                  type="button"
+                  className={`settings-toggle ${enabled ? "is-on" : ""}`}
                   onClick={() =>
                     onChange({ ...visibility, [menu.id]: !enabled })
                   }
-                  style={{
-                    width: 40,
-                    height: 22,
-                    borderRadius: 11,
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
-                    position: "relative",
-                    transition: "background 0.2s",
-                    background: enabled ? menu.color : "#ddd",
-                  }}
                   title={enabled ? "点击关闭" : "点击开启"}
+                  aria-pressed={enabled}
                 >
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 2,
-                      left: enabled ? 20 : 2,
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      background: "#fff",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-                      transition: "left 0.2s",
-                    }}
-                  />
+                  <span className="settings-toggle-thumb" />
                 </button>
               </div>
             );
@@ -153,35 +116,93 @@ function SettingsModal({ visibility, onChange, onClose }) {
 }
 
 function App() {
+  const isQuickSheetMode = window.location.hash === "#quick-sheet";
   const [activeMenu, setActiveMenu] = useState("todo");
   const [collapsed, setCollapsed] = useState(true);
   const [visibility, setVisibility] = useState(loadVisibility);
   const [showSettings, setShowSettings] = useState(false);
+  const [todoNavigation, setTodoNavigation] = useState(null);
 
   const visibleMenus = menus.filter((m) => visibility[m.id] !== false);
 
-  const handleVisibilityChange = useCallback(
-    (newVis) => {
-      setVisibility(newVis);
-      saveVisibility(newVis);
-      if (newVis[activeMenu] === false) {
-        const firstVisible = menus.find((m) => newVis[m.id] !== false);
-        if (firstVisible) setActiveMenu(firstVisible.id);
+  useEffect(() => {
+    if (isQuickSheetMode) {
+      return undefined;
+    }
+
+    if (!window.api || typeof window.api.onAppNavigate !== "function") {
+      return undefined;
+    }
+
+    return window.api.onAppNavigate((payload) => {
+      if (!payload || payload.menuId !== "todo") {
+        return;
       }
-    },
-    [activeMenu],
-  );
+
+      setActiveMenu("todo");
+      setTodoNavigation({
+        ...payload,
+        nonce: Date.now(),
+      });
+    });
+  }, [isQuickSheetMode]);
+
+  useEffect(() => {
+    let resizeTimer = null;
+    const root = document.documentElement;
+
+    const handleResize = () => {
+      root.classList.add("is-resizing");
+
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+      }
+
+      resizeTimer = window.setTimeout(() => {
+        root.classList.remove("is-resizing");
+        resizeTimer = null;
+      }, 140);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+        resizeTimer = null;
+      }
+      document.documentElement.classList.remove("is-resizing");
+    };
+  }, []);
+
+  if (isQuickSheetMode) {
+    return (
+      <div className="app-layout quick-sheet-app">
+        <QuickSheetView />
+      </div>
+    );
+  }
+
+  function handleVisibilityChange(newVis) {
+    setVisibility(newVis);
+    saveVisibility(newVis);
+    if (newVis[activeMenu] === false) {
+      const firstVisible = menus.find((m) => newVis[m.id] !== false);
+      if (firstVisible) setActiveMenu(firstVisible.id);
+    }
+  }
 
   function renderView() {
     switch (activeMenu) {
       case "todo":
-        return <TodoView />;
+        return <TodoWorkbenchView navigationRequest={todoNavigation} />;
+      case "markdown":
+        return <MarkdownWorkbenchView />;
       case "clipboard":
         return <ClipboardView />;
       case "time":
         return <TimeView />;
-      case "base64":
-        return <Base64ImageView />;
       case "compress":
         return <CompressView />;
       case "sysinfo":
@@ -207,7 +228,9 @@ function App() {
                   style={
                     isActive
                       ? {
-                          backgroundColor: menu.color + "18",
+                          backgroundColor: `${menu.color}1f`,
+                          borderColor: `${menu.color}4a`,
+                          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.45), 0 14px 28px -16px ${menu.color}55, 0 8px 22px -12px rgba(79,70,229,0.24)`,
                           color: menu.color,
                         }
                       : {}
@@ -237,10 +260,10 @@ function App() {
             <Settings
               size={18}
               className="menu-item-icon"
-              style={{ color: "#aaa" }}
+              style={{ color: "var(--ink-soft)" }}
             />
             {!collapsed && (
-              <span className="menu-item-label" style={{ color: "#aaa" }}>
+              <span className="menu-item-label" style={{ color: "var(--ink-soft)" }}>
                 设置
               </span>
             )}
@@ -253,7 +276,7 @@ function App() {
             {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </div>
         </aside>
-        <main className="main-content">{renderView()}</main>
+        <main className={`main-content main-content--${activeMenu}`}>{renderView()}</main>
       </div>
       {showSettings && (
         <SettingsModal

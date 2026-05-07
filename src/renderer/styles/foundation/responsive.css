@@ -1,0 +1,103 @@
+:root {
+    --sidebar-width: 200px;
+    --sidebar-collapsed-width: 56px;
+    --content-padding: 28px;
+    --content-padding-sm: 16px;
+    --view-max-width: 960px;
+}
+
+@media (max-width: 900px) {
+    .main-content {
+        padding: 20px var(--content-padding-sm);
+    }
+
+    .view-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .view-header h2 {
+        font-size: 16px;
+    }
+
+    .compress-compare {
+        flex-direction: column;
+    }
+
+    .compress-slider-row {
+        max-width: 200px;
+    }
+
+    .modal {
+        width: calc(100vw - 40px);
+    }
+}
+
+@media (max-width: 700px) {
+    :root {
+        --content-padding: 12px;
+    }
+
+    .main-content {
+        padding: 12px;
+    }
+
+    .view-header {
+        margin-bottom: 12px;
+    }
+
+    .view-header h2 {
+        font-size: 15px;
+    }
+
+    .time-card,
+    .time-shell-card {
+        padding: 12px;
+    }
+
+    .compress-drop {
+        padding: 20px;
+    }
+
+    .compress-format-group,
+    .compress-actions {
+        flex-wrap: wrap;
+    }
+
+    .modal {
+        width: calc(100vw - 24px);
+        max-height: 90vh;
+    }
+
+    .modal-body {
+        padding: 16px;
+    }
+
+    .main-content::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .main-content::-webkit-scrollbar-thumb {
+        border-radius: 2px;
+    }
+}
+
+@media (max-width: 500px) {
+    .view-header {
+        margin-bottom: 8px;
+    }
+
+    .time-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .compress-drop {
+        padding: 16px;
+    }
+
+    .compress-compare-img img {
+        max-height: 120px;
+    }
+}

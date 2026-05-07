@@ -187,6 +187,22 @@ export default function CompressView() {
     runCompress,
   ]);
 
+  useEffect(() => {
+    return () => {
+      compressIdRef.current += 1;
+
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = "";
+      }
+    };
+  }, []);
+
   const handleFile = useCallback((file) => {
     setError("");
     setCompressedBlob(null);
@@ -321,16 +337,16 @@ export default function CompressView() {
               onChange={handleFileInput}
             />
           </div>
-          <div className="b64-actions">
+          <div className="compress-inline-actions">
             <button
-              className="time-action-btn b64-btn-secondary"
+              className="compress-action-btn compress-btn-secondary"
               onClick={handlePaste}
             >
               📋 粘贴图片
             </button>
             {originalSrc && (
               <button
-                className="time-action-btn b64-btn-secondary"
+                className="compress-action-btn compress-btn-secondary"
                 onClick={handleClear}
               >
                 <Trash2 size={14} /> 清空
@@ -551,7 +567,7 @@ export default function CompressView() {
             {/* 压缩按钮 */}
             <div className="compress-actions">
               <button
-                className="time-action-btn"
+                className="compress-action-btn"
                 onClick={handleCompress}
                 disabled={compressing}
               >
@@ -606,8 +622,8 @@ export default function CompressView() {
                 </div>
               </div>
             </div>
-            <div className="b64-actions">
-              <button className="time-action-btn" onClick={handleDownload}>
+            <div className="compress-inline-actions">
+              <button className="compress-action-btn" onClick={handleDownload}>
                 <Download size={14} /> 下载
               </button>
             </div>

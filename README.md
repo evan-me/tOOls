@@ -39,15 +39,18 @@ npm run build
 
 ```
 src/
-├── main/           # Electron 主进程
-│   └── index.js    # 窗口管理、SQLite 操作、IPC 处理
-├── preload/        # 预加载脚本
-│   └── preload.js  # 通过 contextBridge 安全暴露 API
-└── renderer/       # 前端（React + Vite）
+├── main/                  # Electron 主进程
+│   ├── index.js           # 窗口管理、SQLite 操作、IPC 处理
+│   └── lib/               # 主进程业务规则/数据归一化
+├── preload/               # 预加载脚本
+│   └── preload.js         # 通过 contextBridge 安全暴露 API
+└── renderer/              # 前端（React + Vite）
     ├── index.html
     ├── main.jsx
     ├── App.jsx
-    ├── style.css
+    ├── components/        # 复用组件
+    ├── views/             # 业务视图
+    ├── styles/            # 分层样式（foundation/components/views）
     └── vite.config.js
 ```
 
@@ -63,4 +66,4 @@ src/
 
 - SQLite 数据库文件存储在系统用户数据目录（`app.sqlite`）
 - 所有数据库操作在主进程完成，渲染进程通过 IPC 调用，不直接访问 Node API
-- 预加载脚本仅暴露 `getItems` 和 `addItem` 两个方法，遵循最小权限原则
+- 预加载脚本通过 contextBridge 暴露按功能分组的 IPC API，并遵循最小权限原则

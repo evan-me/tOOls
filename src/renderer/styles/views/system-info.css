@@ -1,0 +1,354 @@
+@keyframes systemShellSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.system-shell-view {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    height: 100%;
+}
+
+.system-shell-loading {
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(245, 243, 255, 0.8));
+    color: var(--ink-soft);
+    min-height: 88px;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+}
+
+.system-shell-hero {
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 243, 255, 0.84));
+    box-shadow: 0 16px 34px -18px rgba(79, 70, 229, 0.38);
+    min-height: 84px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+}
+
+.system-shell-hero-copy {
+    min-width: 0;
+}
+
+.system-shell-title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    line-height: 1.2;
+    color: var(--ink);
+}
+
+.system-shell-title-icon {
+    color: var(--cyan);
+    flex-shrink: 0;
+}
+
+.system-shell-subtitle {
+    margin: 5px 0 0;
+    color: var(--ink-soft);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.system-shell-hero-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.system-shell-refresh-btn {
+    height: 33px;
+    padding: 0 13px;
+    border-radius: 9px;
+    border: 0;
+    background: var(--ui-accent-gradient);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 12px 24px rgba(167, 139, 250, 0.26);
+    transition:
+        transform 120ms ease,
+        filter 120ms ease,
+        opacity 120ms ease,
+        box-shadow 120ms ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.system-shell-refresh-btn:hover {
+    transform: var(--ui-lift-hover);
+    filter: brightness(1.04);
+    box-shadow: var(--ui-shadow-accent-hover);
+}
+
+.system-shell-refresh-btn:focus-visible,
+.system-shell-card:focus-visible {
+    outline: 2px solid rgba(124, 58, 237, 0.34);
+    outline-offset: 1px;
+}
+
+.system-shell-refresh-btn:disabled {
+    opacity: 0.62;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.system-shell-refresh-icon {
+    flex-shrink: 0;
+}
+
+.system-shell-refresh-icon.is-spinning {
+    animation: systemShellSpin 1s linear infinite;
+}
+
+.system-shell-error {
+    border-radius: 10px;
+    border: 1px solid rgba(255, 110, 199, 0.24);
+    background: rgba(255, 110, 199, 0.1);
+    color: #9d174d;
+    font-size: 12px;
+    padding: 8px 10px;
+}
+
+.system-shell-workspace {
+    min-height: 0;
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.75fr);
+    gap: 10px;
+}
+
+.system-shell-panel {
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 243, 255, 0.82));
+    box-shadow: 0 16px 30px -18px rgba(79, 70, 229, 0.36);
+    padding: 12px;
+}
+
+.system-shell-main-panel {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.system-shell-op-tip {
+    min-height: 18px;
+    color: #3f6212;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.system-shell-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+}
+
+.system-shell-card {
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 243, 255, 0.74));
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    text-align: left;
+    appearance: none;
+    font: inherit;
+    color: inherit;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.system-shell-card:hover {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 243, 255, 0.86));
+    border-color: var(--glass-border-hot);
+    box-shadow: var(--ui-shadow-card-hover);
+    transform: var(--ui-lift-hover);
+}
+
+.system-shell-card.is-copied {
+    border-color: rgba(190, 242, 100, 0.5);
+    box-shadow: 0 12px 24px rgba(190, 242, 100, 0.12);
+}
+
+.system-shell-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-dim);
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.system-shell-card-icon {
+    color: var(--cyan);
+    flex-shrink: 0;
+}
+
+.system-shell-card-icon.is-copied {
+    color: #65a30d;
+}
+
+.system-shell-card-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.system-shell-card-value {
+    font-size: 16px;
+    color: var(--ink);
+    font-weight: 700;
+    font-family: "Consolas", "SF Mono", monospace;
+    word-break: break-all;
+}
+
+.system-shell-copied {
+    color: #65a30d;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.system-shell-copied-icon {
+    flex-shrink: 0;
+}
+
+.system-shell-empty {
+    border: 1px dashed rgba(124, 58, 237, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ink-dim);
+    text-align: center;
+    padding: 34px 12px;
+}
+
+.system-shell-footnote {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--ink-faint);
+    text-align: center;
+}
+
+.system-shell-side-panel {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.system-shell-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.system-shell-section-head strong {
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.system-shell-section-head span {
+    color: var(--ink-dim);
+    font-size: 11px;
+}
+
+.system-shell-section-head-spaced {
+    margin-top: 12px;
+}
+
+.system-shell-kpi-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.system-shell-kpi-card {
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 10px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(245, 243, 255, 0.74));
+    display: grid;
+    gap: 4px;
+}
+
+.system-shell-kpi-card div {
+    font-size: 12px;
+    color: var(--ink-dim);
+}
+
+.system-shell-kpi-card strong {
+    font-size: 19px;
+    color: var(--ink);
+    line-height: 1.2;
+}
+
+.system-shell-mono {
+    font-family: "Consolas", "SF Mono", monospace;
+    letter-spacing: 0.2px;
+}
+
+.system-shell-note-card {
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 10px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 243, 255, 0.72));
+    color: var(--ink-soft);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+    .system-shell-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .system-shell-side-panel {
+        display: none;
+    }
+}
+
+@media (max-width: 700px) {
+    .system-shell-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .system-shell-hero-actions {
+        width: 100%;
+    }
+
+    .system-shell-refresh-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .system-shell-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .system-shell-panel {
+        padding: 10px;
+    }
+}

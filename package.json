@@ -8,13 +8,16 @@
     "dev:renderer": "cd src/renderer && vite",
     "dev:main": "cross-env DEBUG_RENDERER=true electron .",
     "dev": "concurrently \"npm run dev:renderer\" \"wait-on http://localhost:5173 && npm run dev:main\"",
+    "test:main": "node --test \"test/main/*.test.js\"",
     "build:renderer": "cd src/renderer && vite build",
-    "build": "npm run build:renderer && electron-builder",
+    "build": "npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "postinstall": "electron-builder install-app-deps",
     "create-icon": "node scripts/create-tray-icon.js"
   },
   "dependencies": {
     "lucide-react": "^1.8.0",
+    "marked": "^17.0.6",
+    "marked-react": "^4.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sql.js": "^1.10.0"
@@ -24,7 +27,7 @@
     "concurrently": "^8.2.0",
     "cross-env": "^7.0.3",
     "electron": "^26.0.0",
-    "electron-builder": "^24.6.0",
+    "electron-builder": "^26.8.1",
     "vite": "^5.0.0",
     "wait-on": "^7.0.1"
   },
@@ -56,10 +59,13 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": "true",
-      "createStartMenuShortcut": "true"
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "win": {
+      "icon": "assets/app-icon.png",
+      "forceCodeSigning": false,
+      "signAndEditExecutable": false,
       "target": [
         {
           "target": "nsis",

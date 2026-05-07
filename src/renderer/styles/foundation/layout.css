@@ -1,0 +1,399 @@
+/* ==========================================================================
+   Foundation · Layout — Titlebar / Sidebar / Main shell (V2 Aurora Glass)
+   ========================================================================== */
+
+/* root layout */
+.app-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    background: var(--bg-base);
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.app-layout::before,
+.app-layout::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(96px);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.22;
+}
+
+.app-layout::before {
+    width: 720px;
+    height: 720px;
+    background: radial-gradient(circle, var(--pink), transparent 65%);
+    top: -300px;
+    left: -200px;
+    animation: aurora-drift-1 18s ease-in-out infinite alternate;
+}
+
+.app-layout::after {
+    width: 640px;
+    height: 640px;
+    background: radial-gradient(circle, var(--cyan), transparent 65%);
+    bottom: -260px;
+    right: -180px;
+    animation: aurora-drift-2 22s ease-in-out infinite alternate;
+}
+
+.app-layout > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ----- titlebar ----- */
+.titlebar {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 0 16px;
+    -webkit-app-region: drag;
+    user-select: none;
+    flex-shrink: 0;
+    background: rgba(245, 243, 255, 0.88);
+    backdrop-filter: blur(18px) saturate(145%);
+    -webkit-backdrop-filter: blur(18px) saturate(145%);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.titlebar-drag {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, var(--violet), var(--pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+}
+
+.titlebar-drag::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink), var(--violet));
+    box-shadow: 0 0 10px var(--pink);
+    vertical-align: 1px;
+    animation: pulse-dot 2.6s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.titlebar-buttons {
+    display: flex;
+    -webkit-app-region: no-drag;
+    height: 100%;
+}
+
+.titlebar-btn {
+    width: 46px;
+    height: 38px;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+        background-color var(--duration-fast) var(--easing),
+        color var(--duration-fast) var(--easing);
+}
+
+.titlebar-btn:hover {
+    background: var(--glass);
+    color: var(--ink);
+}
+
+.titlebar-btn-close:hover {
+    background: rgba(219, 39, 119, 0.12);
+    color: #be185d;
+}
+
+/* ----- body / sidebar ----- */
+.app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.sidebar {
+    width: 200px;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    background: rgba(245, 243, 255, 0.82);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border-right: 1px solid var(--glass-border);
+    transition:
+        width var(--duration-base) var(--easing),
+        min-width var(--duration-base) var(--easing);
+}
+
+.sidebar-collapsed {
+    width: 60px;
+    min-width: 60px;
+}
+
+.sidebar-menu {
+    flex: 1;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+}
+
+.sidebar-collapsed .sidebar-menu {
+    padding: 12px 8px;
+    align-items: center;
+}
+
+.menu-item {
+    position: relative;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    transition:
+        background-color var(--duration-base) var(--easing),
+        border-color var(--duration-base) var(--easing),
+        color var(--duration-base) var(--easing),
+        transform var(--duration-base) var(--easing);
+    border-radius: 11px;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    background: transparent;
+}
+
+.menu-item::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: 50%;
+    width: 3px;
+    height: 0;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--pink), var(--violet));
+    box-shadow: 0 0 10px var(--pink);
+    transform: translateY(-50%);
+    transition: height var(--duration-base) var(--easing);
+}
+
+.sidebar-collapsed .menu-item {
+    justify-content: center;
+    padding: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+}
+
+.sidebar-collapsed .menu-item::before {
+    display: none;
+}
+
+.menu-item-icon {
+    flex-shrink: 0;
+    opacity: 0.85;
+    transition:
+        opacity var(--duration-base) var(--easing),
+        transform var(--duration-base) var(--easing),
+        color var(--duration-base) var(--easing),
+        filter var(--duration-base) var(--easing);
+}
+
+.menu-item:hover .menu-item-icon {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.menu-item.active .menu-item-icon {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px currentColor);
+}
+
+.menu-item-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-collapsed .menu-item-label {
+    display: none;
+}
+
+.menu-item:hover {
+    background: var(--glass);
+    border-color: var(--glass-border);
+    color: var(--ink);
+    transform: translateX(2px);
+}
+
+.sidebar-collapsed .menu-item:hover {
+    transform: translateY(-2px);
+}
+
+.menu-item.active {
+    border-color: rgba(124, 58, 237, 0.18);
+    transform: translateX(2px);
+}
+
+.menu-item.active::before {
+    height: 72%;
+}
+
+.menu-item.active .menu-item-label {
+    font-weight: 600;
+}
+
+.sidebar-collapsed .menu-item.active {
+    border-color: var(--glass-border-hot);
+    transform: translateY(-1px);
+}
+
+/* ----- sidebar bottom: settings + toggle ----- */
+.sidebar-settings,
+.sidebar-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px;
+    border-top: 1px solid var(--glass-border);
+    cursor: pointer;
+    color: var(--ink-dim);
+    transition:
+        background-color var(--duration-base) var(--easing),
+        color var(--duration-base) var(--easing);
+}
+
+.sidebar-collapsed .sidebar-settings,
+.sidebar-collapsed .sidebar-toggle {
+    justify-content: center;
+    padding: 11px 0;
+}
+
+.sidebar-settings:hover,
+.sidebar-toggle:hover {
+    color: var(--ink);
+    background: var(--glass);
+}
+
+.sidebar-settings .menu-item-icon {
+    color: var(--ink-soft) !important;
+}
+
+.sidebar-settings:hover .menu-item-icon {
+    color: var(--violet) !important;
+    transform: rotate(45deg);
+}
+
+.sidebar-toggle:hover svg {
+    color: var(--cyan);
+    transform: scale(1.15);
+}
+
+.sidebar-toggle svg {
+    transition:
+        color var(--duration-base) var(--easing),
+        transform var(--duration-base) var(--easing);
+}
+
+/* ----- main content ----- */
+.main-content {
+    flex: 1;
+    overflow-y: auto;
+    background: transparent;
+        padding: 14px 16px;
+    min-width: 0;
+    position: relative;
+}
+
+.main-content--clipboard {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-content--markdown {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-content--todo {
+    padding: 12px 14px;
+}
+
+.view-container {
+    width: 100%;
+    animation: fade-up var(--duration-slow) var(--easing) both;
+}
+
+.main-content > .view-container {
+    width: 100%;
+}
+
+.view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.view-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+}
+
+/* ----- shared scrollbars ----- */
+.main-content::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.main-content::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+    background-clip: padding-box;
+}

@@ -1,0 +1,597 @@
+.markdown-shell-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    color: var(--ink);
+}
+
+.markdown-shell-loading,
+.markdown-shell-feedback {
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: var(--glass);
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+    color: var(--ink);
+}
+
+.markdown-shell-loading {
+    padding: 12px 16px;
+    font-size: 13px;
+}
+
+.markdown-shell-feedback {
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.markdown-shell-feedback.is-error {
+    border-color: rgba(255, 110, 199, 0.46);
+    background: rgba(255, 110, 199, 0.14);
+    color: #9d174d;
+}
+
+.markdown-shell-workspace {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.72fr);
+    gap: 10px;
+}
+
+.markdown-shell-panel,
+.markdown-shell-card {
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 243, 255, 0.84));
+    backdrop-filter: blur(34px) saturate(145%);
+    -webkit-backdrop-filter: blur(34px) saturate(145%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.62),
+        0 28px 65px -34px rgba(79, 70, 229, 0.45),
+        0 0 90px -50px rgba(124, 58, 237, 0.28);
+}
+
+.markdown-shell-editor-panel {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    overflow: hidden;
+}
+
+.markdown-shell-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.markdown-shell-header-fields {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.markdown-shell-title-input,
+.markdown-shell-tags-field input,
+.markdown-shell-editor {
+    width: 100%;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    outline: none;
+    color: var(--ink);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.markdown-shell-title-input,
+.markdown-shell-tags-field {
+    background: rgba(255, 255, 255, 0.68);
+}
+
+.markdown-shell-title-input {
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+}
+
+.markdown-shell-tags-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    border-radius: 12px;
+    padding: 0 12px;
+    color: var(--ink-soft);
+}
+
+.markdown-shell-tags-field input {
+    padding: 11px 0;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+}
+
+.markdown-shell-title-input:focus,
+.markdown-shell-tags-field:focus-within,
+.markdown-shell-editor:focus {
+    border-color: rgba(244, 114, 182, 0.55);
+    box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.12);
+}
+
+.markdown-shell-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.markdown-shell-mode-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.66);
+}
+
+.markdown-shell-mode-btn,
+.markdown-shell-save-btn,
+.markdown-shell-secondary-btn,
+.markdown-shell-text-btn,
+.markdown-shell-calendar-nav,
+.markdown-shell-document-card {
+    border: none;
+    outline: none;
+    cursor: pointer;
+}
+
+.markdown-shell-mode-btn,
+.markdown-shell-save-btn,
+.markdown-shell-secondary-btn,
+.markdown-shell-text-btn,
+.markdown-shell-calendar-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.markdown-shell-mode-btn {
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 12px;
+}
+
+.markdown-shell-mode-btn.is-active {
+    background: var(--ui-active-bg);
+    color: var(--ink);
+    box-shadow: var(--ui-shadow-hover);
+}
+
+.markdown-shell-save-btn,
+.markdown-shell-secondary-btn {
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.markdown-shell-save-btn {
+    min-width: 92px;
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.24), rgba(253, 186, 116, 0.16));
+}
+
+.markdown-shell-save-btn:disabled {
+    opacity: 0.72;
+    cursor: wait;
+}
+
+.markdown-shell-save-btn:hover,
+.markdown-shell-secondary-btn:hover,
+.markdown-shell-text-btn:hover,
+.markdown-shell-calendar-nav:hover,
+.markdown-shell-mode-btn:hover,
+.markdown-shell-document-card:hover {
+    transform: var(--ui-lift-hover);
+    box-shadow: var(--ui-shadow-hover);
+    border-color: var(--ui-border-hover);
+}
+
+.markdown-shell-editor-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--ink-dim);
+    font-size: 11px;
+    font-family: var(--font-mono);
+}
+
+.markdown-shell-editor-meta span {
+    padding: 5px 9px;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.markdown-shell-editor,
+.markdown-shell-preview {
+    flex: 1;
+    min-height: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(245, 243, 255, 0.78));
+}
+
+.markdown-shell-editor {
+    resize: none;
+    padding: 16px 18px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.markdown-shell-preview {
+    overflow: auto;
+    padding: 22px 24px;
+}
+
+.markdown-shell-preview-body {
+    color: var(--ink);
+    line-height: 1.68;
+}
+
+.markdown-shell-preview-body > :first-child {
+    margin-top: 0;
+}
+
+.markdown-shell-preview-body h1,
+.markdown-shell-preview-body h2,
+.markdown-shell-preview-body h3 {
+    letter-spacing: -0.03em;
+    line-height: 1.18;
+}
+
+.markdown-shell-preview-body h1 {
+    font-size: 32px;
+    margin: 0 0 18px;
+}
+
+.markdown-shell-preview-body h2 {
+    font-size: 24px;
+    margin: 30px 0 12px;
+}
+
+.markdown-shell-preview-body h3 {
+    font-size: 19px;
+    margin: 22px 0 10px;
+}
+
+.markdown-shell-preview-body p,
+.markdown-shell-preview-body ul,
+.markdown-shell-preview-body ol,
+.markdown-shell-preview-body blockquote,
+.markdown-shell-preview-body pre,
+.markdown-shell-preview-body table {
+    margin: 0 0 14px;
+}
+
+.markdown-shell-preview-body code {
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: rgba(124, 58, 237, 0.1);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.markdown-shell-preview-body pre {
+    padding: 14px 16px;
+    overflow: auto;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    border-radius: 12px;
+    background: rgba(124, 58, 237, 0.05);
+}
+
+.markdown-shell-preview-body pre code {
+    padding: 0;
+    background: transparent;
+}
+
+.markdown-shell-preview-body blockquote {
+    padding: 14px 16px;
+    border-left: 3px solid rgba(2, 132, 199, 0.6);
+    border-radius: 0 14px 14px 0;
+    background: rgba(2, 132, 199, 0.06);
+    color: var(--ink-soft);
+}
+
+.markdown-shell-preview-body table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.markdown-shell-preview-body th,
+.markdown-shell-preview-body td {
+    padding: 10px 12px;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    text-align: left;
+}
+
+.markdown-shell-preview-body a {
+    color: var(--cyan);
+}
+
+.markdown-shell-preview-blocked,
+.markdown-shell-preview-empty,
+.markdown-shell-preview-error {
+    display: block;
+    padding: 14px;
+    border: 1px dashed rgba(124, 58, 237, 0.18);
+    border-radius: 14px;
+    color: var(--ink-soft);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.markdown-shell-preview-empty p {
+    margin: 0 0 6px;
+}
+
+.markdown-shell-preview-empty .hint-text {
+    color: var(--ink-dim);
+    font-size: 12px;
+}
+
+.markdown-shell-preview-error-content {
+    margin: 12px 0 0;
+    padding: 14px 16px;
+    overflow: auto;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    border-radius: 12px;
+    background: rgba(124, 58, 237, 0.05);
+    color: var(--ink-soft);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.68;
+}
+
+.markdown-shell-preview-blocked-link {
+    color: #9d174d;
+    text-decoration: line-through;
+}
+
+.markdown-shell-side-panel {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.markdown-shell-card {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+}
+
+.markdown-shell-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.markdown-shell-card-header h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    color: var(--ink);
+}
+
+.markdown-shell-card-header p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-dim);
+}
+
+.markdown-shell-documents-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 2px;
+}
+
+.markdown-shell-document-card {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.74);
+    text-align: left;
+    color: var(--ink);
+}
+
+.markdown-shell-document-card.is-active {
+    border-color: var(--glass-border-hot);
+    background: var(--ui-active-bg);
+    box-shadow: var(--ui-shadow-card-hover);
+}
+
+.markdown-shell-document-topline,
+.markdown-shell-document-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.markdown-shell-document-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.markdown-shell-document-time,
+.markdown-shell-document-date {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    white-space: nowrap;
+}
+
+.markdown-shell-document-excerpt {
+    margin: 8px 0 12px;
+    color: var(--ink-soft);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.markdown-shell-document-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.markdown-shell-tag-chip {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.12);
+    color: #6d28d9;
+    font-size: 11px;
+}
+
+.markdown-shell-empty-state {
+    padding: 20px 12px;
+    border: 1px dashed rgba(124, 58, 237, 0.2);
+    border-radius: 14px;
+    text-align: center;
+    color: var(--ink-soft);
+}
+
+.markdown-shell-empty-state p {
+    margin: 0 0 6px;
+}
+
+.markdown-shell-empty-state .hint-text {
+    color: var(--ink-dim);
+    font-size: 12px;
+}
+
+.markdown-shell-text-btn {
+    padding: 0;
+    background: transparent;
+    color: #9d174d;
+    font-size: 12px;
+}
+
+.markdown-shell-calendar-icon {
+    color: var(--ink-dim);
+}
+
+.markdown-shell-calendar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.markdown-shell-calendar-nav {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ink-soft);
+}
+
+.markdown-shell-calendar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.markdown-shell-calendar-weekdays,
+.markdown-shell-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.markdown-shell-calendar-weekdays {
+    margin-bottom: 6px;
+    font-size: 10px;
+    color: var(--ink-dim);
+    text-align: center;
+    font-family: var(--font-mono);
+}
+
+.markdown-shell-calendar-cell {
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.74);
+    color: var(--ink-soft);
+    font-size: 12px;
+}
+
+.markdown-shell-calendar-cell.is-empty {
+    visibility: hidden;
+}
+
+.markdown-shell-calendar-cell.has-data {
+    border-color: rgba(103, 232, 249, 0.22);
+    color: var(--ink);
+    background: rgba(103, 232, 249, 0.08);
+}
+
+.markdown-shell-calendar-cell.is-selected {
+    border-color: rgba(244, 114, 182, 0.46);
+    background: var(--ui-active-bg);
+    color: var(--ink);
+}
+
+.markdown-shell-calendar-cell:disabled {
+    cursor: default;
+    opacity: 0.52;
+}
+
+@media (max-width: 1180px) {
+    .markdown-shell-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .markdown-shell-side-panel {
+        display: none;
+    }
+}
+
+@media (max-width: 820px) {
+    .markdown-shell-header {
+        flex-direction: column;
+    }
+
+    .markdown-shell-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .markdown-shell-document-topline,
+    .markdown-shell-document-footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

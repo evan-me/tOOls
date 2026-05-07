@@ -1,192 +1,330 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { ClipboardList, Copy, Trash2, X } from "lucide-react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import ClipboardHistoryTimeline from "../components/clipboard/ClipboardHistoryTimeline";
+import ClipboardItemModal from "../components/clipboard/ClipboardItemModal";
+import ClipboardSearchHeader from "../components/clipboard/ClipboardSearchHeader";
+import ClipboardSidebar from "../components/clipboard/ClipboardSidebar";
+import {
+  buildClipboardSearchText,
+  buildClipboardSignature,
+  groupClipboardItemsByDate,
+  isReusableItem,
+  parseClipboardTags,
+  parseTagInput,
+  sortReusableItems,
+  tagsToInputValue,
+  tsToDateStr,
+} from "../components/clipboard/clipboard-utils";
 
 export default function ClipboardView() {
   const [items, setItems] = useState([]);
+  const [reusableItems, setReusableItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedTitleDraft, setSelectedTitleDraft] = useState("");
+  const [selectedTagsDraft, setSelectedTagsDraft] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [opTip, setOpTip] = useState("");
+  const tipTimerRef = useRef(null);
+  const historySignatureRef = useRef("");
+  const reusableSignatureRef = useRef("");
+  const isLoadingHistoryRef = useRef(false);
+  const hasPendingRefreshRef = useRef(false);
+  const isMountedRef = useRef(false);
 
-  const loadHistory = useCallback(async () => {
-    const data = await window.api.getClipboardHistory();
-    setItems(data);
-    setLoading(false);
+  const todayObj = new Date();
+  const [calendarDate, setCalendarDate] = useState({
+    year: todayObj.getFullYear(),
+    month: todayObj.getMonth(),
+  });
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  function showTip(text) {
+    setOpTip(text);
+    clearTimeout(tipTimerRef.current);
+    tipTimerRef.current = setTimeout(() => setOpTip(""), 1400);
+  }
+
+  const loadClipboardState = useCallback(async () => {
+    if (isLoadingHistoryRef.current) {
+      hasPendingRefreshRef.current = true;
+      return;
+    }
+
+    isLoadingHistoryRef.current = true;
+
+    try {
+      const [historyData, reusableData] = await Promise.all([
+        window.api.getClipboardHistory(),
+        window.api.getReusableClipboardItems(),
+      ]);
+      if (!isMountedRef.current) return;
+
+      const historyItems = Array.isArray(historyData) ? historyData : [];
+      const reusableBlocks = Array.isArray(reusableData) ? reusableData : [];
+      const nextHistorySignature = buildClipboardSignature(historyItems);
+      const nextReusableSignature = buildClipboardSignature(reusableBlocks);
+
+      if (nextHistorySignature !== historySignatureRef.current) {
+        historySignatureRef.current = nextHistorySignature;
+        setItems(historyItems);
+      }
+
+      if (nextReusableSignature !== reusableSignatureRef.current) {
+        reusableSignatureRef.current = nextReusableSignature;
+        setReusableItems(reusableBlocks);
+      }
+
+      setErrorMessage("");
+    } catch {
+      if (!isMountedRef.current) return;
+      setErrorMessage("加载复制记录失败，请稍后重试");
+    } finally {
+      isLoadingHistoryRef.current = false;
+
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+
+      if (hasPendingRefreshRef.current && isMountedRef.current) {
+        hasPendingRefreshRef.current = false;
+        void loadClipboardState();
+      }
+    }
   }, []);
 
   useEffect(() => {
-    loadHistory();
-    const timer = setInterval(loadHistory, 2000);
-    return () => clearInterval(timer);
-  }, [loadHistory]);
+    isMountedRef.current = true;
+    loadClipboardState();
+    const unsubscribe = window.api.onClipboardHistoryChanged(() => {
+      loadClipboardState();
+    });
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadClipboardState();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isMountedRef.current = false;
+      isLoadingHistoryRef.current = false;
+      hasPendingRefreshRef.current = false;
+      clearTimeout(tipTimerRef.current);
+      unsubscribe();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loadClipboardState]);
+
+  useEffect(() => {
+    if (!selectedItem) {
+      setSelectedTitleDraft("");
+      setSelectedTagsDraft("");
+      return;
+    }
+
+    setSelectedTitleDraft(selectedItem.title || "");
+    setSelectedTagsDraft(tagsToInputValue(parseClipboardTags(selectedItem.tags_json)));
+  }, [selectedItem]);
+
+  const datesWithData = useMemo(() => {
+    const s = new Set();
+    items.forEach((item) => s.add(tsToDateStr(item.created_at)));
+    return s;
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    let result = items;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((item) => buildClipboardSearchText(item).includes(query));
+    }
+    if (selectedDate) {
+      result = result.filter((item) => tsToDateStr(item.created_at) === selectedDate);
+    }
+    return result;
+  }, [items, searchQuery, selectedDate]);
+
+  const filteredReusableItems = useMemo(() => {
+    let result = reusableItems;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((item) => buildClipboardSearchText(item).includes(query));
+    }
+    return [...result].sort(sortReusableItems);
+  }, [reusableItems, searchQuery]);
+
+  const plainHistoryCount = useMemo(
+    () => items.filter((item) => !isReusableItem(item)).length,
+    [items],
+  );
 
   async function handleCopy(item) {
-    await window.api.copyToSystem(item.content);
+    try {
+      await window.api.copyToSystem(item.content, {
+        itemId: isReusableItem(item) ? item.id : null,
+      });
+      if (isReusableItem(item)) {
+        await loadClipboardState();
+      }
+      showTip("已复制到系统剪贴板");
+    } catch {
+      setErrorMessage("复制失败，请重试");
+    }
   }
 
   async function handleDelete(id) {
-    await window.api.deleteClipboardItem(id);
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    if (selectedItem && selectedItem.id === id) {
-      setSelectedItem(null);
+    try {
+      await window.api.deleteClipboardItem(id);
+      await loadClipboardState();
+      if (selectedItem && selectedItem.id === id) {
+        setSelectedItem(null);
+      }
+      setErrorMessage("");
+      showTip("记录已删除");
+    } catch {
+      setErrorMessage("删除失败，请稍后重试");
     }
   }
 
   async function handleClearAll() {
-    if (!confirm("确定清空所有复制记录？")) return;
-    await window.api.clearClipboardHistory();
-    setItems([]);
-    setSelectedItem(null);
-  }
-
-  function formatTime(ts) {
-    const d = new Date(ts);
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  }
-
-  function truncate(text, maxLen) {
-    if (text.length <= maxLen) return text;
-    return text.slice(0, maxLen) + "…";
-  }
-
-  function groupItemsByDate(items) {
-    const groups = {};
-    items.forEach((item) => {
-      const date = new Date(item.created_at);
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-      if (!groups[dateStr]) {
-        groups[dateStr] = [];
+    if (!confirm("确定清空普通历史记录？收藏内容会保留。")) return;
+    try {
+      await window.api.clearClipboardHistory();
+      await loadClipboardState();
+      if (selectedItem && !isReusableItem(selectedItem)) {
+        setSelectedItem(null);
       }
-      groups[dateStr].push(item);
+      setErrorMessage("");
+      showTip("已清空普通历史");
+    } catch {
+      setErrorMessage("清空失败，请稍后重试");
+    }
+  }
+
+  const groupedItems = useMemo(
+    () => groupClipboardItemsByDate(filteredItems),
+    [filteredItems],
+  );
+
+  async function handleToggleFavorite(item) {
+    try {
+      const updatedItem = await window.api.updateClipboardItem(item.id, {
+        isFavorite: !Boolean(Number(item.is_favorite)),
+      });
+      await loadClipboardState();
+      if (selectedItem && selectedItem.id === item.id) {
+        setSelectedItem(updatedItem);
+      }
+      setErrorMessage("");
+      showTip(Boolean(Number(item.is_favorite)) ? "已取消收藏" : "已加入收藏");
+    } catch {
+      setErrorMessage("更新收藏状态失败，请稍后重试");
+    }
+  }
+
+  async function handleSaveSelectedMetadata() {
+    if (!selectedItem || !isReusableItem(selectedItem)) {
+      return;
+    }
+
+    try {
+      const updatedItem = await window.api.updateClipboardItem(selectedItem.id, {
+        title: selectedTitleDraft,
+        tags: parseTagInput(selectedTagsDraft),
+      });
+      await loadClipboardState();
+      setSelectedItem(updatedItem);
+      setErrorMessage("");
+      showTip("知识块信息已更新");
+    } catch {
+      setErrorMessage("保存知识块信息失败，请稍后重试");
+    }
+  }
+
+  function handlePreviousCalendarMonth() {
+    setCalendarDate(({ year, month }) => {
+      const date = new Date(year, month - 1, 1);
+      return { year: date.getFullYear(), month: date.getMonth() };
     });
-    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-    return sortedDates.map((date) => ({
-      date,
-      items: groups[date],
-    }));
+  }
+
+  function handleNextCalendarMonth() {
+    setCalendarDate(({ year, month }) => {
+      const date = new Date(year, month + 1, 1);
+      return { year: date.getFullYear(), month: date.getMonth() };
+    });
   }
 
   if (loading) {
     return (
-      <div className="view-container">
-        <p>加载中…</p>
+      <div className="view-container clipboard-shell-view">
+        <div className="clipboard-shell-loading">加载中…</div>
       </div>
     );
   }
 
   return (
-    <div className="view-container">
-      <div className="view-header">
-        <h2>
-          <ClipboardList
-            size={20}
-            style={{ verticalAlign: "middle", marginRight: 6 }}
-          />
-          复制历史
-        </h2>
-        {items.length > 0 && (
-          <button className="btn-danger" onClick={handleClearAll}>
-            清空全部
-          </button>
-        )}
-      </div>
+    <div className="view-container clipboard-shell-view">
+      {errorMessage && <div className="clipboard-shell-error">{errorMessage}</div>}
 
       {items.length === 0 ? (
-        <div className="empty-hint">
+        <div className="empty-hint clipboard-shell-empty">
           <p>还没有复制记录</p>
           <p className="hint-text">在任意地方复制内容后，会自动出现在这里</p>
         </div>
       ) : (
-        <div className="clipboard-timeline">
-          {groupItemsByDate(items).map((group) => (
-            <div key={group.date} className="timeline-group">
-              <div className="timeline-date">
-                <span className="timeline-date-text">{group.date}</span>
-                <span className="timeline-count">
-                  {group.items.length} 条记录
-                </span>
-              </div>
-              <div className="timeline-items">
-                {group.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="clipboard-card"
-                    onClick={() => setSelectedItem(item)}
-                  >
-                    <div className="card-body">
-                      <p className="card-text">{truncate(item.content, 120)}</p>
-                    </div>
-                    <div className="card-footer">
-                      <span className="card-meta">
-                        <span className="card-time">
-                          {formatTime(item.created_at)}
-                        </span>
-                        <span className="card-chars">
-                          {item.content.length} 字符
-                        </span>
-                      </span>
-                      <div
-                        className="card-actions"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          className="btn-icon"
-                          title="复制到剪贴板"
-                          onClick={() => handleCopy(item)}
-                        >
-                          <Copy size={14} />
-                        </button>
-                        <button
-                          className="btn-icon btn-icon-danger"
-                          title="删除"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div className="clipboard-shell-workspace">
+          <article className="clipboard-shell-panel">
+            <ClipboardSearchHeader
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onClearSearch={() => setSearchQuery("")}
+              plainHistoryCount={plainHistoryCount}
+              onClearAll={handleClearAll}
+              opTip={opTip}
+            />
+            <ClipboardHistoryTimeline
+              groupedItems={groupedItems}
+              selectedItemId={selectedItem?.id ?? null}
+              onSelectItem={setSelectedItem}
+              onToggleFavorite={handleToggleFavorite}
+              onCopy={handleCopy}
+              onDelete={handleDelete}
+            />
+          </article>
+          <ClipboardSidebar
+            filteredReusableItems={filteredReusableItems}
+            selectedItemId={selectedItem?.id ?? null}
+            onSelectItem={setSelectedItem}
+            onCopy={handleCopy}
+            itemsCount={items.length}
+            filteredItemsCount={filteredItems.length}
+            reusableItemsCount={reusableItems.length}
+            calendarDate={calendarDate}
+            onPreviousMonth={handlePreviousCalendarMonth}
+            onNextMonth={handleNextCalendarMonth}
+            datesWithData={datesWithData}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onClearSelectedDate={() => setSelectedDate(null)}
+          />
         </div>
       )}
+      <ClipboardItemModal
+        item={selectedItem}
+        titleDraft={selectedTitleDraft}
+        tagsDraft={selectedTagsDraft}
+        onChangeTitleDraft={setSelectedTitleDraft}
+        onChangeTagsDraft={setSelectedTagsDraft}
+        onClose={() => setSelectedItem(null)}
+        onToggleFavorite={handleToggleFavorite}
+        onSaveMetadata={handleSaveSelectedMetadata}
+        onCopy={handleCopy}
+      />
 
-      {selectedItem && (
-        <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>复制内容详情</h3>
-              <button
-                className="modal-close"
-                onClick={() => setSelectedItem(null)}
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="modal-meta">
-              <span>{formatTime(selectedItem.created_at)}</span>
-              <span>{selectedItem.content.length} 字符</span>
-              <span>{selectedItem.content.split("\n").length} 行</span>
-            </div>
-            <div className="modal-body">
-              <pre className="modal-content">{selectedItem.content}</pre>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="btn-primary"
-                onClick={() => handleCopy(selectedItem)}
-              >
-                <Copy
-                  size={13}
-                  style={{ verticalAlign: "middle", marginRight: 4 }}
-                />
-                复制
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

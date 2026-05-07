@@ -342,6 +342,7 @@
             let imgNaturalW = 0;
             let imgNaturalH = 0;
             let toastTimer = null;
+            let detachImageDataListener = null;
 
             // ==================== DOM ====================
             const $ = (s) => document.querySelector(s);
@@ -527,10 +528,20 @@
 
             // ==================== 接收 IPC 数据 ====================
             if (window.api && window.api.onImageData) {
-                window.api.onImageData((data) => {
+                detachImageDataListener = window.api.onImageData((data) => {
                     loadImage(data.src, data.alt);
                 });
             }
+
+            window.addEventListener("beforeunload", () => {
+                clearTimeout(toastTimer);
+                if (typeof detachImageDataListener === "function") {
+                    detachImageDataListener();
+                    detachImageDataListener = null;
+                }
+                mainImg.onload = null;
+                mainImg.onerror = null;
+            });
 
             // 兜底：如果没有 IPC 数据（比如直接打开 HTML 调试），检查 URL 参数
             // 不做任何事，等待 IPC
