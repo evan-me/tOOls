@@ -1,6 +1,6 @@
 {
   "name": "electron-react-sqlite-windows",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "description": "Electron + React + Vite starter with SQLite (Windows target)",
   "main": "src/main/index.js",
   "private": true,
