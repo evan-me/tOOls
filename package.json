@@ -18,6 +18,8 @@
     "generate-icon": "powershell -ExecutionPolicy Bypass -File scripts/generate-icon.ps1"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "lucide-react": "^1.8.0",
     "marked": "^17.0.6",
     "marked-react": "^4.0.0",
@@ -92,7 +94,10 @@
       ]
     },
     "dmg": {
-      "window": { "width": 540, "height": 380 },
+      "window": {
+        "width": 540,
+        "height": 380
+      },
       "iconSize": 120
     }
   },

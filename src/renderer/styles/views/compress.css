@@ -179,7 +179,7 @@
     color: var(--ink);
     min-width: 36px;
     text-align: right;
-    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-family: var(--font-mono);
 }
 
 .compress-size-inputs {
@@ -262,7 +262,7 @@
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 8px;
-    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-family: var(--font-mono);
 }
 
 .compress-reduction[data-positive="true"] {
