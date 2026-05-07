@@ -41,6 +41,13 @@ dist-electron/
 app-build/
 electron/dist/
 
+# Local AI / dev notes
+CLAUDE.md
+temp_todo_*.txt
+
+# Tests (local only)
+test/
+
 # SQLite / DB / app data
 *.sqlite
 *.sqlite3

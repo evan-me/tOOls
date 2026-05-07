@@ -14,7 +14,8 @@
     "build:win": "npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
     "build:mac": "npm run build:renderer && electron-builder --mac",
     "postinstall": "electron-builder install-app-deps",
-    "create-icon": "node scripts/create-tray-icon.js"
+    "create-icon": "node scripts/create-tray-icon.js",
+    "generate-icon": "powershell -ExecutionPolicy Bypass -File scripts/generate-icon.ps1"
   },
   "dependencies": {
     "lucide-react": "^1.8.0",
