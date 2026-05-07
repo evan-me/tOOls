@@ -11,6 +11,8 @@
     "test:main": "node --test \"test/main/*.test.js\"",
     "build:renderer": "cd src/renderer && vite build",
     "build": "npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "build:win": "npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "build:mac": "npm run build:renderer && electron-builder --mac",
     "postinstall": "electron-builder install-app-deps",
     "create-icon": "node scripts/create-tray-icon.js"
   },
@@ -74,6 +76,23 @@
           ]
         }
       ]
+    },
+    "mac": {
+      "icon": "assets/app-icon.png",
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "window": { "width": 540, "height": 380 },
+      "iconSize": 120
     }
   },
   "author": "",
