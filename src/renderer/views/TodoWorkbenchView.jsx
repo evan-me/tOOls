@@ -172,6 +172,7 @@ export default function TodoWorkbenchView({ navigationRequest = null }) {
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calSelectedDate, setCalSelectedDate] = useState(null);
   const [calCollapsed, setCalCollapsed] = useState(true);
+  const [completedExpanded, setCompletedExpanded] = useState(false);
   const [viewFilter, setViewFilter] = useState("all");
   const [quickFilter, setQuickFilter] = useState("all");
   const [actionError, setActionError] = useState("");
@@ -919,13 +920,24 @@ export default function TodoWorkbenchView({ navigationRequest = null }) {
                       .filter(Boolean)
                       .join(" ")}
                   >
-                    <div className="todo-shell-completed-header">
+                    <div
+                      className={`todo-shell-completed-header${visibleCompleted.length > 3 ? " is-expandable" : ""}`}
+                      onClick={() => visibleCompleted.length > 3 && setCompletedExpanded((prev) => !prev)}
+                    >
                       <span className="todo-shell-completed-header-main">
                         <CheckCircle2 size={14} />
                         <span>已完成 ({visibleCompleted.length})</span>
                       </span>
+                      {visibleCompleted.length > 3 && (
+                        <span className="todo-shell-completed-toggle">
+                          {completedExpanded ? "收起" : `展开 ${Math.min(visibleCompleted.length, 5)} 项`}
+                        </span>
+                      )}
                     </div>
-                    {visibleCompleted.map((todo) => renderTodoCard(todo, "completed"))}
+                    {(completedExpanded
+                      ? visibleCompleted.slice(0, 5)
+                      : visibleCompleted.slice(0, 3)
+                    ).map((todo) => renderTodoCard(todo, "completed"))}
                   </section>
                 )}
 

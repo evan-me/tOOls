@@ -146,6 +146,7 @@
     backdrop-filter: blur(12px) saturate(130%);
     -webkit-backdrop-filter: blur(12px) saturate(130%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    margin-right: 6px;
 }
 
 .todo-shell-cal-collapsed {
@@ -327,6 +328,7 @@
     justify-content: flex-start;
     gap: 12px;
     flex-wrap: wrap;
+    margin-right: 6px;
 }
 
 .todo-shell-title-block {
@@ -413,9 +415,9 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    width: 100%;
     height: 46px;
     padding: 0 16px;
+    margin-right: 6px;
     border-radius: 12px;
     border: 1px solid var(--glass-border);
     background: rgba(255, 255, 255, 0.04);
@@ -466,6 +468,7 @@
 .todo-shell-add-form {
     border-radius: 12px;
     border: 1px solid var(--glass-border-hot);
+    margin-right: 6px;
     background: var(--glass-strong);
     backdrop-filter: blur(18px) saturate(135%);
     -webkit-backdrop-filter: blur(18px) saturate(135%);
@@ -660,7 +663,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding-right: 4px;
+    scrollbar-gutter: stable;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1004,8 +1007,7 @@
 /* ----- completed section divider ----- */
 .todo-shell-completed-section {
     margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--glass-border);
+    padding-top: 4px;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -1040,6 +1042,24 @@
     flex: 1;
     height: 1px;
     background: var(--glass-border);
+}
+
+.todo-shell-completed-header.is-expandable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 180ms;
+}
+
+.todo-shell-completed-header.is-expandable:hover {
+    color: var(--ink);
+}
+
+.todo-shell-completed-toggle {
+    font-size: 10.5px;
+    color: var(--pink);
+    font-weight: 500;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
 }
 
 .todo-shell-card.is-completed-compact {
