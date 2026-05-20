@@ -37,6 +37,9 @@ npm install
 # 启动开发模式（Vite HMR + Electron）
 npm run dev
 
+# 打包版如需静默启动
+dist\\win-unpacked\\tOOls.exe --start-hidden
+
 # 构建（当前平台）
 npm run build
 
@@ -48,6 +51,8 @@ npm run build:mac
 ```
 
 产物输出到 `dist/` 目录。
+
+打包版默认会**正常打开主界面**；如需静默托盘启动，可使用 `--start-hidden`，之后双击托盘图标或使用 Quick Sheet 快捷键即可唤起界面。
 
 ## 下载
 

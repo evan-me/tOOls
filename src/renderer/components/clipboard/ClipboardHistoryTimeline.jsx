@@ -16,7 +16,21 @@ export default function ClipboardHistoryTimeline({
   onToggleFavorite,
   onCopy,
   onDelete,
+  hasMore,
+  isLoadingMore,
+  onReachEnd,
 }) {
+  function handleScroll(event) {
+    if (!hasMore || isLoadingMore || typeof onReachEnd !== "function") {
+      return;
+    }
+
+    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight <= 160) {
+      onReachEnd();
+    }
+  }
+
   if (groupedItems.length === 0) {
     return (
       <div className="empty-hint clipboard-shell-empty-inner">
@@ -27,7 +41,7 @@ export default function ClipboardHistoryTimeline({
   }
 
   return (
-    <div className="clipboard-shell-timeline">
+    <div className="clipboard-shell-timeline" onScroll={handleScroll}>
       {groupedItems.map((group) => (
         <section key={group.date} className="clipboard-shell-group">
           <div className="clipboard-shell-group-head">
@@ -122,6 +136,11 @@ export default function ClipboardHistoryTimeline({
           </div>
         </section>
       ))}
+      {(isLoadingMore || !hasMore) && (
+        <div className="clipboard-shell-history-status">
+          {isLoadingMore ? "继续加载中…" : "已加载全部记录"}
+        </div>
+      )}
     </div>
   );
 }

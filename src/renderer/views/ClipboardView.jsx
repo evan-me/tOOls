@@ -19,6 +19,9 @@ export default function ClipboardView() {
   const [items, setItems] = useState([]);
   const [reusableItems, setReusableItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [historyTotalCount, setHistoryTotalCount] = useState(0);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedTitleDraft, setSelectedTitleDraft] = useState("");
   const [selectedTagsDraft, setSelectedTagsDraft] = useState("");
@@ -26,11 +29,16 @@ export default function ClipboardView() {
   const [errorMessage, setErrorMessage] = useState("");
   const [opTip, setOpTip] = useState("");
   const tipTimerRef = useRef(null);
-  const historySignatureRef = useRef("");
   const reusableSignatureRef = useRef("");
   const isLoadingHistoryRef = useRef(false);
+  const isLoadingReusableRef = useRef(false);
   const hasPendingRefreshRef = useRef(false);
   const isMountedRef = useRef(false);
+  const itemsRef = useRef([]);
+  const nextHistoryOffsetRef = useRef(0);
+  const searchQueryRef = useRef("");
+  const selectedDateRef = useRef(null);
+  const hasMountedFiltersRef = useRef(false);
 
   const todayObj = new Date();
   const [calendarDate, setCalendarDate] = useState({
@@ -39,42 +47,80 @@ export default function ClipboardView() {
   });
   const [selectedDate, setSelectedDate] = useState(null);
 
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
   function showTip(text) {
     setOpTip(text);
     clearTimeout(tipTimerRef.current);
     tipTimerRef.current = setTimeout(() => setOpTip(""), 1400);
   }
 
-  const loadClipboardState = useCallback(async () => {
-    if (isLoadingHistoryRef.current) {
-      hasPendingRefreshRef.current = true;
+  const loadReusableItems = useCallback(async () => {
+    if (isLoadingReusableRef.current) {
       return;
     }
 
-    isLoadingHistoryRef.current = true;
+    isLoadingReusableRef.current = true;
 
     try {
-      const [historyData, reusableData] = await Promise.all([
-        window.api.getClipboardHistory(),
-        window.api.getReusableClipboardItems(),
-      ]);
+      const reusableData = await window.api.getReusableClipboardItems();
       if (!isMountedRef.current) return;
 
-      const historyItems = Array.isArray(historyData) ? historyData : [];
       const reusableBlocks = Array.isArray(reusableData) ? reusableData : [];
-      const nextHistorySignature = buildClipboardSignature(historyItems);
       const nextReusableSignature = buildClipboardSignature(reusableBlocks);
-
-      if (nextHistorySignature !== historySignatureRef.current) {
-        historySignatureRef.current = nextHistorySignature;
-        setItems(historyItems);
-      }
-
       if (nextReusableSignature !== reusableSignatureRef.current) {
         reusableSignatureRef.current = nextReusableSignature;
         setReusableItems(reusableBlocks);
       }
+    } catch {
+      if (!isMountedRef.current) return;
+      setErrorMessage("加载复制记录失败，请稍后重试");
+    } finally {
+      isLoadingReusableRef.current = false;
+    }
+  }, []);
 
+  const loadClipboardState = useCallback(async ({ reset = false } = {}) => {
+    if (isLoadingHistoryRef.current) {
+      if (reset) {
+        hasPendingRefreshRef.current = true;
+      }
+      return;
+    }
+
+    isLoadingHistoryRef.current = true;
+    if (isMountedRef.current) {
+      if (reset) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+    }
+
+    try {
+      const historyData = await window.api.getClipboardHistoryPage({
+        offset: reset ? 0 : nextHistoryOffsetRef.current,
+        searchQuery: searchQueryRef.current,
+        selectedDate: selectedDateRef.current,
+      });
+      if (!isMountedRef.current) return;
+
+      const pageItems = Array.isArray(historyData?.items) ? historyData.items : [];
+      const nextItems = reset ? pageItems : [...itemsRef.current, ...pageItems];
+      nextHistoryOffsetRef.current = Number(historyData?.nextOffset) || nextItems.length;
+      setItems(nextItems);
+      setHasMore(Boolean(historyData?.hasMore));
+      setHistoryTotalCount(Number(historyData?.totalCount) || nextItems.length);
       setErrorMessage("");
     } catch {
       if (!isMountedRef.current) return;
@@ -84,25 +130,30 @@ export default function ClipboardView() {
 
       if (isMountedRef.current) {
         setLoading(false);
+        setLoadingMore(false);
       }
 
       if (hasPendingRefreshRef.current && isMountedRef.current) {
         hasPendingRefreshRef.current = false;
-        void loadClipboardState();
+        void loadClipboardState({ reset: true });
       }
     }
   }, []);
 
+  const refreshClipboardState = useCallback(async () => {
+    await Promise.all([loadClipboardState({ reset: true }), loadReusableItems()]);
+  }, [loadClipboardState, loadReusableItems]);
+
   useEffect(() => {
     isMountedRef.current = true;
-    loadClipboardState();
+    void refreshClipboardState();
     const unsubscribe = window.api.onClipboardHistoryChanged(() => {
-      loadClipboardState();
+      void refreshClipboardState();
     });
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadClipboardState();
+        void refreshClipboardState();
       }
     };
 
@@ -111,12 +162,22 @@ export default function ClipboardView() {
     return () => {
       isMountedRef.current = false;
       isLoadingHistoryRef.current = false;
+      isLoadingReusableRef.current = false;
       hasPendingRefreshRef.current = false;
       clearTimeout(tipTimerRef.current);
       unsubscribe();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [loadClipboardState]);
+  }, [refreshClipboardState]);
+
+  useEffect(() => {
+    if (!hasMountedFiltersRef.current) {
+      hasMountedFiltersRef.current = true;
+      return;
+    }
+
+    void loadClipboardState({ reset: true });
+  }, [searchQuery, selectedDate, loadClipboardState]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -134,18 +195,6 @@ export default function ClipboardView() {
     items.forEach((item) => s.add(tsToDateStr(item.created_at)));
     return s;
   }, [items]);
-
-  const filteredItems = useMemo(() => {
-    let result = items;
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((item) => buildClipboardSearchText(item).includes(query));
-    }
-    if (selectedDate) {
-      result = result.filter((item) => tsToDateStr(item.created_at) === selectedDate);
-    }
-    return result;
-  }, [items, searchQuery, selectedDate]);
 
   const filteredReusableItems = useMemo(() => {
     let result = reusableItems;
@@ -167,7 +216,7 @@ export default function ClipboardView() {
         itemId: isReusableItem(item) ? item.id : null,
       });
       if (isReusableItem(item)) {
-        await loadClipboardState();
+        await refreshClipboardState();
       }
       showTip("已复制到系统剪贴板");
     } catch {
@@ -178,7 +227,7 @@ export default function ClipboardView() {
   async function handleDelete(id) {
     try {
       await window.api.deleteClipboardItem(id);
-      await loadClipboardState();
+      await refreshClipboardState();
       if (selectedItem && selectedItem.id === id) {
         setSelectedItem(null);
       }
@@ -193,7 +242,7 @@ export default function ClipboardView() {
     if (!confirm("确定清空普通历史记录？收藏内容会保留。")) return;
     try {
       await window.api.clearClipboardHistory();
-      await loadClipboardState();
+      await refreshClipboardState();
       if (selectedItem && !isReusableItem(selectedItem)) {
         setSelectedItem(null);
       }
@@ -204,17 +253,24 @@ export default function ClipboardView() {
     }
   }
 
-  const groupedItems = useMemo(
-    () => groupClipboardItemsByDate(filteredItems),
-    [filteredItems],
-  );
+  const groupedItems = useMemo(() => groupClipboardItemsByDate(items), [items]);
+
+  const hasActiveHistoryFilters = Boolean(searchQuery.trim()) || Boolean(selectedDate);
+
+  const handleLoadMoreHistory = useCallback(() => {
+    if (!hasMore || loading || loadingMore) {
+      return;
+    }
+
+    void loadClipboardState({ reset: false });
+  }, [hasMore, loadClipboardState, loading, loadingMore]);
 
   async function handleToggleFavorite(item) {
     try {
       const updatedItem = await window.api.updateClipboardItem(item.id, {
         isFavorite: !Boolean(Number(item.is_favorite)),
       });
-      await loadClipboardState();
+      await refreshClipboardState();
       if (selectedItem && selectedItem.id === item.id) {
         setSelectedItem(updatedItem);
       }
@@ -235,7 +291,7 @@ export default function ClipboardView() {
         title: selectedTitleDraft,
         tags: parseTagInput(selectedTagsDraft),
       });
-      await loadClipboardState();
+      await refreshClipboardState();
       setSelectedItem(updatedItem);
       setErrorMessage("");
       showTip("知识块信息已更新");
@@ -270,7 +326,7 @@ export default function ClipboardView() {
     <div className="view-container clipboard-shell-view">
       {errorMessage && <div className="clipboard-shell-error">{errorMessage}</div>}
 
-      {items.length === 0 ? (
+      {!hasActiveHistoryFilters && historyTotalCount === 0 ? (
         <div className="empty-hint clipboard-shell-empty">
           <p>还没有复制记录</p>
           <p className="hint-text">在任意地方复制内容后，会自动出现在这里</p>
@@ -293,6 +349,9 @@ export default function ClipboardView() {
               onToggleFavorite={handleToggleFavorite}
               onCopy={handleCopy}
               onDelete={handleDelete}
+              hasMore={hasMore}
+              isLoadingMore={loadingMore}
+              onReachEnd={handleLoadMoreHistory}
             />
           </article>
           <ClipboardSidebar
@@ -300,8 +359,8 @@ export default function ClipboardView() {
             selectedItemId={selectedItem?.id ?? null}
             onSelectItem={setSelectedItem}
             onCopy={handleCopy}
-            itemsCount={items.length}
-            filteredItemsCount={filteredItems.length}
+            itemsCount={historyTotalCount}
+            filteredItemsCount={historyTotalCount}
             reusableItemsCount={reusableItems.length}
             calendarDate={calendarDate}
             onPreviousMonth={handlePreviousCalendarMonth}

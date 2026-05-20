@@ -215,6 +215,13 @@
     background: rgba(167, 139, 250, 0.34);
 }
 
+.clipboard-shell-history-status {
+    padding: 2px 0 10px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-3, #8a9a92);
+}
+
 .clipboard-shell-group {
     flex-shrink: 0;
     border: 1px solid var(--line-soft, rgba(32, 48, 42, 0.08));

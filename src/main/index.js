@@ -22,6 +22,7 @@ const {
 } = require("./lib/clipboard-retention");
 const {
   normalizeClipboardPatch,
+  normalizeClipboardTemplateInput,
 } = require("./lib/clipboard-metadata");
 const {
   normalizeMarkdownDocumentInput,
@@ -29,6 +30,15 @@ const {
 const {
   normalizeQuickSheetAction,
 } = require("./lib/quick-sheet");
+const {
+  resolveRuntimePolicy,
+} = require("./lib/runtime-policy");
+const {
+  DEFAULT_CLIPBOARD_HISTORY_PAGE_SIZE,
+  normalizeClipboardHistoryPageRequest,
+  getClipboardHistoryDateRange,
+  buildClipboardHistoryPageResult,
+} = require("./lib/clipboard-history-page");
 
 let db;
 let dbPath;
@@ -38,6 +48,7 @@ let quickSheetWindow = null;
 let tray = null;
 let isQuitting = false;
 let reminderTimer = null;
+let runtimePolicy = null;
 
 const REMINDER_NONE_PRESET = "none";
 const VALID_REMINDER_PRESETS = new Set([
@@ -131,7 +142,7 @@ async function loadDatabase() {
     "CREATE INDEX IF NOT EXISTS idx_clipboard_created ON clipboard(created_at DESC)",
   );
   db.run(
-    "CREATE INDEX IF NOT EXISTS idx_clipboard_reusable ON clipboard(is_favorite, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_clipboard_reusable ON clipboard(is_favorite, is_template, created_at DESC)",
   );
   db.run(
     "CREATE INDEX IF NOT EXISTS idx_clipboard_last_used ON clipboard(last_used_at DESC)",
@@ -188,6 +199,7 @@ const CLIPBOARD_SELECT_FIELDS = `
   title,
   tags_json,
   is_favorite,
+  is_template,
   updated_at,
   last_used_at
 `;
@@ -332,6 +344,11 @@ function ensureClipboardSchema() {
   ) || migrated;
   migrated = ensureColumn(
     "clipboard",
+    "is_template",
+    "is_template INTEGER NOT NULL DEFAULT 0",
+  ) || migrated;
+  migrated = ensureColumn(
+    "clipboard",
     "updated_at",
     "updated_at INTEGER NOT NULL DEFAULT 0",
   ) || migrated;
@@ -348,6 +365,7 @@ function ensureClipboardSchema() {
     "UPDATE clipboard SET tags_json = '[]' WHERE tags_json IS NULL OR tags_json = ''",
   );
   db.run("UPDATE clipboard SET is_favorite = 0 WHERE is_favorite IS NULL");
+  db.run("UPDATE clipboard SET is_template = 0 WHERE is_template IS NULL");
   db.run(
     "UPDATE clipboard SET updated_at = created_at WHERE updated_at IS NULL OR updated_at = 0",
   );
@@ -414,6 +432,11 @@ function buildClipboardUpdateStatement(patch) {
     params.push(patch.isFavorite ? 1 : 0);
   }
 
+  if (Object.prototype.hasOwnProperty.call(patch, "isTemplate")) {
+    assignments.push("is_template = ?");
+    params.push(patch.isTemplate ? 1 : 0);
+  }
+
   return { assignments, params };
 }
 
@@ -422,10 +445,12 @@ function getClipboardHistoryRows() {
     `SELECT ${CLIPBOARD_SELECT_FIELDS}
      FROM clipboard
      WHERE COALESCE(is_favorite, 0) = 1
+        OR COALESCE(is_template, 0) = 1
         OR id IN (
           SELECT id
           FROM clipboard
           WHERE COALESCE(is_favorite, 0) = 0
+            AND COALESCE(is_template, 0) = 0
           ORDER BY created_at DESC
           LIMIT ?
         )
@@ -434,11 +459,86 @@ function getClipboardHistoryRows() {
   );
 }
 
+function buildClipboardHistoryFilterClause({ searchQuery = "", selectedDate = null } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (searchQuery) {
+    const likeQuery = `%${searchQuery.toLowerCase()}%`;
+    conditions.push(
+      `(LOWER(content) LIKE ?
+        OR LOWER(COALESCE(title, '')) LIKE ?
+        OR LOWER(COALESCE(tags_json, '')) LIKE ?)`,
+    );
+    params.push(likeQuery, likeQuery, likeQuery);
+  }
+
+  const selectedDateRange = getClipboardHistoryDateRange(selectedDate);
+  if (selectedDateRange) {
+    conditions.push("created_at >= ? AND created_at < ?");
+    params.push(selectedDateRange.startAt, selectedDateRange.endAt);
+  }
+
+  return {
+    whereClause: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "",
+    params,
+  };
+}
+
+function getClipboardHistoryPage(request = {}) {
+  const normalizedRequest = normalizeClipboardHistoryPageRequest(request);
+  const { whereClause, params: filterParams } = buildClipboardHistoryFilterClause(
+    normalizedRequest,
+  );
+  const historyScopeSql = `
+    WITH clipboard_history_scope AS (
+      SELECT ${CLIPBOARD_SELECT_FIELDS}
+      FROM clipboard
+      WHERE COALESCE(is_favorite, 0) = 1
+         OR COALESCE(is_template, 0) = 1
+         OR id IN (
+           SELECT id
+           FROM clipboard
+           WHERE COALESCE(is_favorite, 0) = 0
+             AND COALESCE(is_template, 0) = 0
+           ORDER BY created_at DESC
+           LIMIT ?
+         )
+    )
+  `;
+  const baseParams = [CLIPBOARD_HISTORY_LIMIT, ...filterParams];
+  const totalCountRow = dbQueryOne(
+    `${historyScopeSql}
+     SELECT COUNT(*) as total_count
+     FROM clipboard_history_scope
+     ${whereClause}`,
+    baseParams,
+  );
+  const items = dbQueryAll(
+    `${historyScopeSql}
+     SELECT *
+     FROM clipboard_history_scope
+     ${whereClause}
+     ORDER BY created_at DESC
+     LIMIT ?
+     OFFSET ?`,
+    [...baseParams, normalizedRequest.limit, normalizedRequest.offset],
+  );
+
+  return buildClipboardHistoryPageResult({
+    items,
+    offset: normalizedRequest.offset,
+    limit: normalizedRequest.limit,
+    totalCount: Number(totalCountRow?.total_count) || 0,
+  });
+}
+
 function getReusableClipboardRows() {
   return dbQueryAll(
     `SELECT ${CLIPBOARD_SELECT_FIELDS}
      FROM clipboard
      WHERE COALESCE(is_favorite, 0) = 1
+        OR COALESCE(is_template, 0) = 1
      ORDER BY COALESCE(last_used_at, 0) DESC,
               COALESCE(updated_at, created_at) DESC,
               created_at DESC`,
@@ -544,7 +644,7 @@ function copyClipboardContentToSystem(content, itemId = null) {
 
 function cleanupClipboardHistory() {
   const rows = dbQueryAll(
-    `SELECT id, created_at, is_favorite
+    `SELECT id, created_at, is_favorite, is_template
      FROM clipboard`,
   );
   const idsToDelete = pickClipboardIdsToDelete(rows, CLIPBOARD_HISTORY_LIMIT);
@@ -861,7 +961,11 @@ function getTrayIconPath() {
   return path.join(__dirname, "..", "..", "assets", "tray-icon.png");
 }
 
-function createTray(win) {
+function createTray() {
+  if (tray && !tray.isDestroyed()) {
+    return tray;
+  }
+
   const iconPath = getTrayIconPath();
 
   if (!fs.existsSync(iconPath)) {
@@ -892,6 +996,8 @@ function createTray(win) {
   tray.on("double-click", () => {
     focusMainWindow();
   });
+
+  return tray;
 }
 
 // ==================== 窗口 ====================
@@ -943,7 +1049,7 @@ function focusWindow(targetWindow) {
 }
 
 function focusMainWindow() {
-  focusWindow(mainWindow);
+  focusWindow(ensureMainWindow());
 }
 
 function hideQuickSheetWindow() {
@@ -966,19 +1072,19 @@ function emitAppNavigate(payload) {
 }
 
 function toggleQuickSheetWindow() {
-  if (!quickSheetWindow || quickSheetWindow.isDestroyed()) {
+  const targetWindow = ensureQuickSheetWindow();
+
+  if (targetWindow.isVisible() && targetWindow.isFocused()) {
+    targetWindow.hide();
     return;
   }
 
-  if (quickSheetWindow.isVisible() && quickSheetWindow.isFocused()) {
-    quickSheetWindow.hide();
-    return;
+  if (!targetWindow.webContents.isLoading()) {
+    emitQuickSheetRefresh();
   }
-
-  emitQuickSheetRefresh();
-  quickSheetWindow.center();
-  quickSheetWindow.show();
-  quickSheetWindow.focus();
+  targetWindow.center();
+  targetWindow.show();
+  targetWindow.focus();
 }
 
 function registerQuickSheetShortcut() {
@@ -995,12 +1101,13 @@ function registerQuickSheetShortcut() {
   }
 }
 
-function createWindow() {
+function createWindow({ show = false } = {}) {
   Menu.setApplicationMenu(null);
 
   mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 700,
+    width: 1366,
+    height: 768,
+    show,
     title: "tOOls",
     frame: false,
     icon: getAppIconPath(),
@@ -1014,9 +1121,11 @@ function createWindow() {
     }
   });
 
-  loadRendererWindow(mainWindow);
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
 
-  createTray(mainWindow);
+  loadRendererWindow(mainWindow);
 }
 
 function createQuickSheetWindow() {
@@ -1052,18 +1161,47 @@ function createQuickSheetWindow() {
     }
   });
 
+  quickSheetWindow.on("closed", () => {
+    quickSheetWindow = null;
+  });
+
   loadRendererWindow(quickSheetWindow, "quick-sheet");
+}
+
+function ensureMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    return mainWindow;
+  }
+
+  createWindow({ show: false });
+  return mainWindow;
+}
+
+function ensureQuickSheetWindow() {
+  if (quickSheetWindow && !quickSheetWindow.isDestroyed()) {
+    return quickSheetWindow;
+  }
+
+  createQuickSheetWindow();
+  return quickSheetWindow;
 }
 
 // ==================== 启动 ====================
 
 app.whenReady().then(async () => {
   await loadDatabase();
-  createWindow();
-  createQuickSheetWindow();
+  runtimePolicy = resolveRuntimePolicy({
+    isPackaged: app.isPackaged,
+    argv: process.argv.slice(1),
+  });
+  createTray();
   registerQuickSheetShortcut();
   startClipboardMonitor();
   startReminderMonitor();
+
+  if (runtimePolicy.openMainWindowOnLaunch) {
+    focusMainWindow();
+  }
 });
 
 app.on("before-quit", () => {
@@ -1133,6 +1271,10 @@ ipcMain.handle("clipboard/get-history", async () => {
   return getClipboardHistoryRows();
 });
 
+ipcMain.handle("clipboard/get-history-page", async (event, request) => {
+  return getClipboardHistoryPage(request || {});
+});
+
 ipcMain.handle("clipboard/get-reusable-items", async () => {
   return getReusableClipboardRows();
 });
@@ -1162,6 +1304,41 @@ ipcMain.handle("clipboard/update-item", async (event, { id, patch }) => {
   return getClipboardItemById(normalizedId);
 });
 
+ipcMain.handle("clipboard/create-template", async (event, payload) => {
+  const templateInput = normalizeClipboardTemplateInput(payload || {});
+  const createdAt = Date.now();
+
+  db.run(
+    `INSERT INTO clipboard (
+       content,
+       content_type,
+       created_at,
+       title,
+       tags_json,
+       is_favorite,
+       is_template,
+       updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      templateInput.content,
+      "text",
+      createdAt,
+      templateInput.title,
+      JSON.stringify(templateInput.tags),
+      templateInput.isFavorite ? 1 : 0,
+      1,
+      createdAt,
+    ],
+  );
+  scheduleSave();
+  emitClipboardHistoryChanged();
+  const row = dbQueryOne("SELECT last_insert_rowid() as id");
+  if (!row) {
+    throw new Error("Failed to create clipboard template");
+  }
+  return getClipboardItemById(row.id);
+});
+
 ipcMain.handle("clipboard/delete-item", async (event, id) => {
   const normalizedId = normalizeClipboardId(id);
   db.run("DELETE FROM clipboard WHERE id = ?", [normalizedId]);
@@ -1172,7 +1349,8 @@ ipcMain.handle("clipboard/delete-item", async (event, id) => {
 ipcMain.handle("clipboard/clear-all", async () => {
   db.run(
     `DELETE FROM clipboard
-     WHERE COALESCE(is_favorite, 0) = 0`,
+     WHERE COALESCE(is_favorite, 0) = 0
+       AND COALESCE(is_template, 0) = 0`,
   );
   scheduleSave();
   emitClipboardHistoryChanged();

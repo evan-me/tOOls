@@ -16,12 +16,16 @@ contextBridge.exposeInMainWorld("api", {
 
   // Clipboard
   getClipboardHistory: () => ipcRenderer.invoke("clipboard/get-history"),
+  getClipboardHistoryPage: (request = {}) =>
+    ipcRenderer.invoke("clipboard/get-history-page", request),
   getReusableClipboardItems: () =>
     ipcRenderer.invoke("clipboard/get-reusable-items"),
   deleteClipboardItem: (id) => ipcRenderer.invoke("clipboard/delete-item", id),
   clearClipboardHistory: () => ipcRenderer.invoke("clipboard/clear-all"),
   updateClipboardItem: (id, patch) =>
     ipcRenderer.invoke("clipboard/update-item", { id, patch }),
+  createClipboardTemplate: (payload) =>
+    ipcRenderer.invoke("clipboard/create-template", payload),
   copyToSystem: (content, options = {}) =>
     ipcRenderer.invoke("clipboard/copy-to-system", {
       content,
